@@ -1,0 +1,8 @@
+; MiniScript global class discovery smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Global Class Smoke"
+run/main_scene="res://GlobalClassSmoke.tscn"

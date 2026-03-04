@@ -1,0 +1,8 @@
+; MiniScript breakpoint post-removal stress smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Breakpoint Stress Smoke"
+run/main_scene="res://BreakpointStress.tscn"

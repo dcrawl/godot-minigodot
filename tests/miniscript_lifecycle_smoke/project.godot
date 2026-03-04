@@ -1,0 +1,8 @@
+; MiniScript lifecycle callback smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Lifecycle Smoke"
+run/main_scene="res://LifecycleSmoke.tscn"

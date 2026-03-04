@@ -1,0 +1,8 @@
+; MiniScript runtime error smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Runtime Error Smoke"
+run/main_scene="res://RuntimeError.tscn"

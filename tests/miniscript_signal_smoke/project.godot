@@ -1,0 +1,8 @@
+; MiniScript signal smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Signal Smoke"
+run/main_scene="res://SignalSmoke.tscn"

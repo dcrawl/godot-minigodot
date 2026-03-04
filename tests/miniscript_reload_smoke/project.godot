@@ -1,0 +1,8 @@
+; MiniScript hot-reload and tool-mode smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Reload Smoke"
+run/main_scene="res://ReloadSmoke.tscn"

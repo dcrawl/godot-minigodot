@@ -1,0 +1,8 @@
+; MiniScript export property smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Export Smoke"
+run/main_scene="res://ExportSmoke.tscn"

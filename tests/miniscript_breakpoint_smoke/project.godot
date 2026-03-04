@@ -1,0 +1,8 @@
+; MiniScript breakpoint add/remove/hit smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Breakpoint Smoke"
+run/main_scene="res://BreakpointSmoke.tscn"

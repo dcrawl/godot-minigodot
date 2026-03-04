@@ -1,0 +1,14 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://emitter.ms" id="1_ms"]
+[ext_resource type="Script" path="res://listener.gd" id="2_gd"]
+
+[node name="SignalSmokeRoot" type="Node"]
+
+[node name="Emitter" type="Node" parent="."]
+script = ExtResource("1_ms")
+
+[node name="Listener" type="Node" parent="."]
+script = ExtResource("2_gd")
+
+[connection signal="ping" from="Emitter" to="Listener" method="_on_ping"]
