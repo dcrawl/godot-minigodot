@@ -1,0 +1,5 @@
+63f7b34db8d8cdea90c76aacccf841ec
+::res://::1772590728
+export_presets.cfg::TextFile::-1::1772590688::0::1::::<><><>0<>0<><>::
+hello.ms::MiniScript::1087295868567734280::1772590687::0::1::::<>Object<><>0<>0<><>::
+Smoke.tscn::PackedScene::-1::1772590687::0::1::::<><><>0<>0<><>::res://hello.ms

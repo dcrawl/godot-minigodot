@@ -55,11 +55,13 @@ void MiniScriptLanguage::set_runtime_error(const String &p_path, int p_line, con
     }
 }
 
-void MiniScriptLanguage::push_debug_frame(const String &p_path, const String &p_function, int p_line) {
+void MiniScriptLanguage::push_debug_frame(const String &p_path, const String &p_function, int p_line, const Vector<String> &p_local_names, const Vector<Variant> &p_local_values) {
     DebugFrame frame;
     frame.source = p_path;
     frame.function = p_function;
     frame.line = p_line;
+    frame.local_names = p_local_names;
+    frame.local_values = p_local_values;
     debug_stack.push_back(frame);
 }
 
@@ -207,6 +209,23 @@ String MiniScriptLanguage::debug_get_stack_level_source(int p_level) const {
 }
 
 void MiniScriptLanguage::debug_get_stack_level_locals(int p_level, List<String> *p_locals, List<Variant> *p_values, int p_max_subitems, int p_max_depth) {
+    const Vector<DebugFrame> &frames = debug_stack.is_empty() ? debug_last_error_stack : debug_stack;
+    if (p_level < 0 || p_level >= frames.size()) {
+        return;
+    }
+
+    const int index = frames.size() - 1 - p_level;
+    const DebugFrame &frame = frames[index];
+
+    const int local_count = frame.local_names.size();
+    for (int i = 0; i < local_count; i++) {
+        p_locals->push_back(frame.local_names[i]);
+        if (i < frame.local_values.size()) {
+            p_values->push_back(frame.local_values[i]);
+        } else {
+            p_values->push_back(Variant());
+        }
+    }
 }
 
 void MiniScriptLanguage::debug_get_stack_level_members(int p_level, List<String> *p_members, List<Variant> *p_values, int p_max_subitems, int p_max_depth) {
@@ -216,6 +235,25 @@ void MiniScriptLanguage::debug_get_globals(List<String> *p_globals, List<Variant
 }
 
 String MiniScriptLanguage::debug_parse_stack_level_expression(int p_level, const String &p_expression, int p_max_subitems, int p_max_depth) {
+    const Vector<DebugFrame> &frames = debug_stack.is_empty() ? debug_last_error_stack : debug_stack;
+    if (p_level < 0 || p_level >= frames.size()) {
+        return String();
+    }
+
+    const String expression = p_expression.strip_edges();
+    if (expression.is_empty()) {
+        return String();
+    }
+
+    const int index = frames.size() - 1 - p_level;
+    const DebugFrame &frame = frames[index];
+
+    for (int i = 0; i < frame.local_names.size(); i++) {
+        if (frame.local_names[i] == expression && i < frame.local_values.size()) {
+            return frame.local_values[i].get_construct_string();
+        }
+    }
+
     return String();
 }
 

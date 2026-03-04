@@ -1,0 +1,8 @@
+; MiniScript isolated variable-inspection smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Isolated Variable Inspection Smoke"
+run/main_scene="res://VariableInspectionIsolatedSmoke.tscn"

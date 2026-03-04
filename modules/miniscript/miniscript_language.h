@@ -9,6 +9,8 @@ class MiniScriptLanguage : public ScriptLanguage {
         String source;
         String function;
         int line = -1;
+        Vector<String> local_names;
+        Vector<Variant> local_values;
     };
 
     static MiniScriptLanguage *singleton;
@@ -22,7 +24,7 @@ public:
     static MiniScriptLanguage *get_singleton();
     static void clear_runtime_error();
     static void set_runtime_error(const String &p_path, int p_line, const String &p_message);
-    static void push_debug_frame(const String &p_path, const String &p_function, int p_line);
+    static void push_debug_frame(const String &p_path, const String &p_function, int p_line, const Vector<String> &p_local_names = Vector<String>(), const Vector<Variant> &p_local_values = Vector<Variant>());
     static void pop_debug_frame();
     static bool debug_break(const String &p_error, bool p_allow_continue = true, bool p_is_error_breakpoint = false);
 

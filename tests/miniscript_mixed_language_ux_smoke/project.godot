@@ -1,0 +1,8 @@
+; MiniScript + GDScript mixed-language UX smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Mixed Language UX Smoke"
+run/main_scene="res://MixedUx.tscn"

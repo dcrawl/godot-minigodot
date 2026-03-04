@@ -1,0 +1,8 @@
+; MiniScript export-packaging smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Export Packaging Smoke"
+run/main_scene="res://Smoke.tscn"

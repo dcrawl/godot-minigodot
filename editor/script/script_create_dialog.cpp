@@ -114,15 +114,28 @@ void ScriptCreateDialog::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_TREE: {
 			String last_language = EditorSettings::get_singleton()->get_project_metadata("script_setup", "last_selected_language", "");
+			String configured_default_language = EDITOR_GET("text_editor/behavior/files/default_script_language");
+			int configured_default_language_index = default_language;
+			if (!configured_default_language.is_empty()) {
+				for (int i = 0; i < language_menu->get_item_count(); i++) {
+					if (language_menu->get_item_text(i) == configured_default_language) {
+						configured_default_language_index = i;
+						break;
+					}
+				}
+			}
+			bool last_language_selected = false;
 			if (!last_language.is_empty()) {
 				for (int i = 0; i < language_menu->get_item_count(); i++) {
 					if (language_menu->get_item_text(i) == last_language) {
 						language_menu->select(i);
+						last_language_selected = true;
 						break;
 					}
 				}
-			} else {
-				language_menu->select(default_language);
+			}
+			if (!last_language_selected) {
+				language_menu->select(configured_default_language_index);
 			}
 			is_using_templates = EDITOR_GET("_script_setup_use_script_templates");
 			use_templates->set_pressed(is_using_templates);
@@ -890,12 +903,18 @@ ScriptCreateDialog::ScriptCreateDialog() {
 	gc->add_child(language_menu);
 
 	default_language = -1;
+	int gdscript_language = -1;
 	for (int i = 0; i < ScriptServer::get_language_count(); i++) {
 		String lang = ScriptServer::get_language(i)->get_name();
 		language_menu->add_item(lang);
-		if (lang == "GDScript") {
+		if (lang == "MiniScript") {
 			default_language = i;
+		} else if (lang == "GDScript") {
+			gdscript_language = i;
 		}
+	}
+	if (default_language < 0) {
+		default_language = gdscript_language;
 	}
 	if (default_language >= 0) {
 		language_menu->select(default_language);

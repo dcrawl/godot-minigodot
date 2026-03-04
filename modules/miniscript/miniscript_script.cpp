@@ -2,6 +2,7 @@
 
 #include "core/debugger/engine_debugger.h"
 #include "core/debugger/script_debugger.h"
+#include "core/os/os.h"
 #include "core/string/print_string.h"
 #include "miniscript_instance.h"
 #include "miniscript_language.h"
@@ -69,11 +70,25 @@ Variant MiniScript::call_script_method(const StringName &p_method, const Variant
 
     ScriptDebugger *script_debugger = EngineDebugger::get_script_debugger();
 
+    Vector<String> debug_local_names;
+    Vector<Variant> debug_local_values;
+    const int declared_args = method->info.arguments.size();
+    debug_local_names.resize(declared_args);
+    debug_local_values.resize(declared_args);
+    for (int arg_idx = 0; arg_idx < declared_args; arg_idx++) {
+        debug_local_names.write[arg_idx] = method->info.arguments[arg_idx].name;
+        if (arg_idx < p_argcount && p_args != nullptr && p_args[arg_idx] != nullptr) {
+            debug_local_values.write[arg_idx] = *p_args[arg_idx];
+        } else {
+            debug_local_values.write[arg_idx] = Variant();
+        }
+    }
+
     struct DebugFrameGuard {
         bool active = false;
         ScriptDebugger *script_debugger = nullptr;
-        DebugFrameGuard(const String &p_path, const String &p_function, int p_line) {
-            MiniScriptLanguage::push_debug_frame(p_path, p_function, p_line);
+        DebugFrameGuard(const String &p_path, const String &p_function, int p_line, const Vector<String> &p_local_names, const Vector<Variant> &p_local_values) {
+            MiniScriptLanguage::push_debug_frame(p_path, p_function, p_line, p_local_names, p_local_values);
             active = true;
 
             script_debugger = EngineDebugger::get_script_debugger();
@@ -90,7 +105,7 @@ Variant MiniScript::call_script_method(const StringName &p_method, const Variant
                 MiniScriptLanguage::pop_debug_frame();
             }
         }
-    } debug_frame_guard(script_path, String(p_method), method->declaration_line);
+    } debug_frame_guard(script_path, String(p_method), method->declaration_line, debug_local_names, debug_local_values);
 
     auto poll_debug_line = [&](int p_line) -> bool {
         if (script_debugger == nullptr || !EngineDebugger::is_active()) {
@@ -122,6 +137,37 @@ Variant MiniScript::call_script_method(const StringName &p_method, const Variant
     };
 
     if (script_debugger != nullptr) {
+        const String step_arm_method_env = OS::get_singleton()->get_environment("MINISCRIPT_STEP_ARM_METHOD").strip_edges();
+        const String step_lines_env = OS::get_singleton()->get_environment("MINISCRIPT_STEP_LINES").strip_edges();
+        const String step_depth_env = OS::get_singleton()->get_environment("MINISCRIPT_STEP_DEPTH").strip_edges();
+        const String step_legacy_lines_env = OS::get_singleton()->get_environment("MINISCRIPT_STEP_OVER_LINES").strip_edges();
+
+        bool arm_step = false;
+        if (!step_arm_method_env.is_empty()) {
+            arm_step = step_arm_method_env == String(p_method);
+        } else {
+            arm_step = !step_lines_env.is_empty() || !step_legacy_lines_env.is_empty();
+        }
+
+        if (arm_step) {
+            int step_lines = -1;
+            if (!step_lines_env.is_empty() && step_lines_env.is_valid_int()) {
+                step_lines = MAX(0, step_lines_env.to_int());
+            } else if (!step_legacy_lines_env.is_empty() && step_legacy_lines_env.is_valid_int()) {
+                step_lines = MAX(0, step_legacy_lines_env.to_int());
+            }
+
+            int step_depth = -1;
+            if (!step_depth_env.is_empty() && step_depth_env.is_valid_int()) {
+                step_depth = step_depth_env.to_int();
+            }
+
+            script_debugger->set_depth(step_depth);
+            if (step_lines >= 0) {
+                script_debugger->set_lines_left(step_lines);
+            }
+        }
+
         if (!script_debugger->is_skipping_breakpoints() && script_debugger->is_breakpoint(method->declaration_line, script_path)) {
             const String hit_message = vformat("MiniScript breakpoint hit at %s:%d in function '%s'", script_path, method->declaration_line, String(p_method));
             print_line(hit_message);
@@ -235,6 +281,28 @@ Variant MiniScript::call_script_method(const StringName &p_method, const Variant
             r_error.error = Callable::CallError::CALL_ERROR_INVALID_METHOD;
             MiniScriptLanguage::set_runtime_error(script_path, emit_action.source_line, vformat("failed to emit signal '%s'", String(emit_action.signal_name)));
             return Variant();
+        }
+    }
+
+    for (int call_idx = 0; call_idx < method->call_actions.size(); call_idx++) {
+        const ParsedCallAction &call_action = method->call_actions[call_idx];
+
+        if (poll_debug_line(call_action.source_line >= 0 ? call_action.source_line : method->declaration_line)) {
+            return Variant();
+        }
+
+        Callable::CallError nested_error;
+        Variant nested_result = call_script_method(call_action.method_name, nullptr, 0, nested_error, p_instance);
+        if (nested_error.error != Callable::CallError::CALL_OK) {
+            r_error = nested_error;
+            return Variant();
+        }
+
+        if (nested_result.get_type() == Variant::NIL) {
+            MiniScriptLanguage *language = MiniScriptLanguage::get_singleton();
+            if (language != nullptr && language->debug_get_error().contains("breakpoint hit")) {
+                return Variant();
+            }
         }
     }
 
@@ -620,6 +688,28 @@ void MiniScript::_parse_source() {
                 }
 
                 parsed.emit_actions.push_back(emit_action);
+            } else if (body_line.begins_with("call ")) {
+                String call_expr = body_line.substr(5).strip_edges();
+                if (call_expr.is_empty()) {
+                    parsed.has_runtime_issue = true;
+                    parsed.runtime_issue_line = j + 1;
+                    parsed.runtime_issue_message = "call requires a method name";
+                    continue;
+                }
+
+                PackedStringArray parts = call_expr.split(" ", false);
+                String method_name = parts.is_empty() ? String() : parts[0].strip_edges();
+                if (method_name.is_empty()) {
+                    parsed.has_runtime_issue = true;
+                    parsed.runtime_issue_line = j + 1;
+                    parsed.runtime_issue_message = "call requires a method name";
+                    continue;
+                }
+
+                ParsedCallAction call_action;
+                call_action.method_name = method_name;
+                call_action.source_line = j + 1;
+                parsed.call_actions.push_back(call_action);
             } else if (!body_line.is_empty() && !body_line.begins_with("#")) {
                 parsed.has_runtime_issue = true;
                 parsed.runtime_issue_line = j + 1;

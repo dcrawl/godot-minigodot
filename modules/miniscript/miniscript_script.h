@@ -20,6 +20,11 @@ class MiniScript : public Script {
         Vector<ParsedEmitArgument> arguments;
     };
 
+    struct ParsedCallAction {
+        StringName method_name;
+        int source_line = -1;
+    };
+
     struct ParsedMethod {
         MethodInfo info;
         int declaration_line = -1;
@@ -37,6 +42,7 @@ class MiniScript : public Script {
         int runtime_issue_line = -1;
         String runtime_issue_message;
         Vector<ParsedEmitAction> emit_actions;
+        Vector<ParsedCallAction> call_actions;
     };
 
     struct ParsedProperty {

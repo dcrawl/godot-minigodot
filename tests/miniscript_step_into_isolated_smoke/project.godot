@@ -1,0 +1,8 @@
+; MiniScript isolated step-into smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Isolated Step Into Smoke"
+run/main_scene="res://StepIntoIsolatedSmoke.tscn"

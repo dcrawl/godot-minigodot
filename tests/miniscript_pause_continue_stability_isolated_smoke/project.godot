@@ -1,0 +1,8 @@
+; MiniScript isolated pause-continue stability smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Isolated Pause Continue Stability Smoke"
+run/main_scene="res://PauseContinueStabilityIsolatedSmoke.tscn"

@@ -1,0 +1,8 @@
+; MiniScript isolated step-over smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Isolated Step Over Smoke"
+run/main_scene="res://StepOverIsolatedSmoke.tscn"
