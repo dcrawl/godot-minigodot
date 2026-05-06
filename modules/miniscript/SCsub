@@ -1,5 +1,54 @@
 #!/usr/bin/env python
+from misc.utility.scons_hints import *
 
 Import("env")
+Import("env_modules")
 
-env.add_source_files(env.modules_sources, "*.cpp")
+env_miniscript = env_modules.Clone()
+
+# Thirdparty MiniScript interpreter sources
+
+thirdparty_dir = "#thirdparty/miniscript/"
+
+thirdparty_sources = [
+    "SimpleString.cpp",
+    "SimpleVector.cpp",
+    "List.cpp",
+    "Dictionary.cpp",
+    "MiniscriptKeywords.cpp",
+    "MiniscriptTypes.cpp",
+    "MiniscriptLexer.cpp",
+    "MiniscriptParser.cpp",
+    "MiniscriptTAC.cpp",
+    "MiniscriptInterpreter.cpp",
+    "MiniscriptIntrinsics.cpp",
+    "UnicodeUtil.cpp",
+    "SplitJoin.cpp",
+    "QA.cpp",
+    "UnitTest.cpp",
+]
+
+thirdparty_sources = [thirdparty_dir + f for f in thirdparty_sources]
+
+env_miniscript.Prepend(CPPPATH=[thirdparty_dir])
+
+env_thirdparty = env_miniscript.Clone()
+env_thirdparty.disable_warnings()
+# MiniScript uses C++ exceptions for error handling; re-enable them for these sources.
+if not env_thirdparty.msvc:
+    env_thirdparty["CXXFLAGS"] = [f for f in env_thirdparty.get("CXXFLAGS", []) if f != "-fno-exceptions"]
+else:
+    env_thirdparty["CPPDEFINES"] = [d for d in env_thirdparty.get("CPPDEFINES", []) if d != ("_HAS_EXCEPTIONS", 0)]
+    env_thirdparty.Append(CXXFLAGS=["/EHsc"])
+
+thirdparty_obj = []
+env_thirdparty.add_source_files(thirdparty_obj, thirdparty_sources)
+env.modules_sources += thirdparty_obj
+
+# Module source files
+
+module_obj = []
+env_miniscript.add_source_files(module_obj, "*.cpp")
+env.modules_sources += module_obj
+
+env.Depends(module_obj, thirdparty_obj)
