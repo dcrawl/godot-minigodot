@@ -13,6 +13,7 @@ func _ready() -> void:
 
 	var skip_breakpoints := EngineDebugger.is_skipping_breakpoints()
 
+	# --- D-01/D-02: method-entry breakpoint (line 1) ---
 	EngineDebugger.clear_breakpoints()
 	EngineDebugger.insert_breakpoint(1, "res://breakpoint_test.ms")
 
@@ -24,16 +25,34 @@ func _ready() -> void:
 			return
 	else:
 		if first_result != null:
-			print("MiniScript breakpoint smoke failed: breakpoint did not interrupt call")
+			print("MiniScript breakpoint smoke failed: entry breakpoint did not interrupt call, got ", first_result)
 			get_tree().quit(2)
 			return
 
 	EngineDebugger.remove_breakpoint(1, "res://breakpoint_test.ms")
 	var second_result: Variant = probe_node.call("probe")
 	if second_result != 123:
-		print("MiniScript breakpoint smoke failed: call did not resume after breakpoint removal, got ", second_result)
+		print("MiniScript breakpoint smoke failed: call did not resume after entry breakpoint removal, got ", second_result)
 		get_tree().quit(3)
 		return
+
+	# --- D-02: line-level breakpoint (line 2 = print statement) ---
+	if not skip_breakpoints:
+		EngineDebugger.clear_breakpoints()
+		EngineDebugger.insert_breakpoint(2, "res://breakpoint_test.ms")
+
+		var line_bp_result: Variant = probe_node.call("probe")
+		if line_bp_result != null:
+			print("MiniScript breakpoint smoke failed: line-level breakpoint did not interrupt call, got ", line_bp_result)
+			get_tree().quit(4)
+			return
+
+		EngineDebugger.remove_breakpoint(2, "res://breakpoint_test.ms")
+		var line_bp_resume_result: Variant = probe_node.call("probe")
+		if line_bp_resume_result != 123:
+			print("MiniScript breakpoint smoke failed: call did not resume after line breakpoint removal, got ", line_bp_resume_result)
+			get_tree().quit(5)
+			return
 
 	EngineDebugger.clear_breakpoints()
 	if skip_breakpoints:

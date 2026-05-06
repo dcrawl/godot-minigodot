@@ -71,6 +71,12 @@ void MiniScriptLanguage::pop_debug_frame() {
     }
 }
 
+void MiniScriptLanguage::update_debug_frame_line(int p_line) {
+    if (!debug_stack.is_empty() && p_line >= 0) {
+        debug_stack.write[debug_stack.size() - 1].line = p_line;
+    }
+}
+
 bool MiniScriptLanguage::debug_break(const String &p_error, bool p_allow_continue, bool p_is_error_breakpoint) {
     if (!EngineDebugger::is_active() || singleton == nullptr) {
         return false;
@@ -255,6 +261,23 @@ String MiniScriptLanguage::debug_parse_stack_level_expression(int p_level, const
     }
 
     return String();
+}
+
+Vector<ScriptLanguage::StackInfo> MiniScriptLanguage::debug_get_current_stack_info() {
+    Vector<StackInfo> result;
+    const int count = debug_stack.size();
+    if (count == 0) {
+        return result;
+    }
+    result.resize(count);
+    for (int i = 0; i < count; i++) {
+        const DebugFrame &frame = debug_stack[count - 1 - i];
+        StackInfo &si = result.write[i];
+        si.file = frame.source;
+        si.func = frame.function;
+        si.line = frame.line;
+    }
+    return result;
 }
 
 void MiniScriptLanguage::reload_all_scripts() {

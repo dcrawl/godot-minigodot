@@ -1,0 +1,8 @@
+; MiniScript isolated call-stack serialization smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Isolated Callstack Serialization Smoke"
+run/main_scene="res://CallstackSerializationIsolatedSmoke.tscn"

@@ -26,6 +26,7 @@ public:
     static void set_runtime_error(const String &p_path, int p_line, const String &p_message);
     static void push_debug_frame(const String &p_path, const String &p_function, int p_line, const Vector<String> &p_local_names = Vector<String>(), const Vector<Variant> &p_local_values = Vector<Variant>());
     static void pop_debug_frame();
+    static void update_debug_frame_line(int p_line);
     static bool debug_break(const String &p_error, bool p_allow_continue = true, bool p_is_error_breakpoint = false);
 
     String get_name() const override;
@@ -57,6 +58,7 @@ public:
     void debug_get_stack_level_members(int p_level, List<String> *p_members, List<Variant> *p_values, int p_max_subitems = -1, int p_max_depth = -1) override;
     void debug_get_globals(List<String> *p_globals, List<Variant> *p_values, int p_max_subitems = -1, int p_max_depth = -1) override;
     String debug_parse_stack_level_expression(int p_level, const String &p_expression, int p_max_subitems = -1, int p_max_depth = -1) override;
+    Vector<StackInfo> debug_get_current_stack_info() override;
 
     void reload_all_scripts() override;
     void reload_scripts(const Array &p_scripts, bool p_soft_reload) override;

@@ -112,7 +112,10 @@ Variant MiniScript::call_script_method(const StringName &p_method, const Variant
             return false;
         }
 
+        MiniScriptLanguage::update_debug_frame_line(p_line);
+
         bool do_break = false;
+        bool is_line_breakpoint = false;
 
         if (script_debugger->get_lines_left() > 0) {
             if (script_debugger->get_depth() <= 0) {
@@ -125,9 +128,13 @@ Variant MiniScript::call_script_method(const StringName &p_method, const Variant
 
         if (!script_debugger->is_skipping_breakpoints() && script_debugger->is_breakpoint(p_line, script_path)) {
             do_break = true;
+            is_line_breakpoint = true;
         }
 
         if (do_break) {
+            if (is_line_breakpoint) {
+                print_line(vformat("MiniScript breakpoint hit at %s:%d in function '%s'", script_path, p_line, String(p_method)));
+            }
             MiniScriptLanguage::set_runtime_error(script_path, p_line, "breakpoint hit");
             MiniScriptLanguage::debug_break("Breakpoint", true, false);
         }
@@ -303,6 +310,11 @@ Variant MiniScript::call_script_method(const StringName &p_method, const Variant
             if (language != nullptr && language->debug_get_error().contains("breakpoint hit")) {
                 return Variant();
             }
+        }
+
+        // Post-call poll: enables step-out (pause at caller boundary after nested call completes).
+        if (poll_debug_line(call_action.source_line >= 0 ? call_action.source_line : method->declaration_line)) {
+            return Variant();
         }
     }
 
