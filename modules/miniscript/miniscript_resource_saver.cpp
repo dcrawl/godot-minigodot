@@ -4,7 +4,7 @@
 #include "miniscript_script.h"
 
 Error MiniScriptResourceSaver::save(const Ref<Resource> &p_resource, const String &p_path, uint32_t p_flags) {
-    Ref<MiniScript> script = p_resource;
+    Ref<MiniScriptScript> script = p_resource;
     ERR_FAIL_COND_V(script.is_null(), ERR_INVALID_PARAMETER);
 
     Error err = OK;
@@ -20,11 +20,11 @@ Error MiniScriptResourceSaver::save(const Ref<Resource> &p_resource, const Strin
 }
 
 void MiniScriptResourceSaver::get_recognized_extensions(const Ref<Resource> &p_resource, List<String> *p_extensions) const {
-    if (Object::cast_to<MiniScript>(*p_resource) != nullptr) {
+    if (Object::cast_to<MiniScriptScript>(*p_resource) != nullptr) {
         p_extensions->push_back("ms");
     }
 }
 
 bool MiniScriptResourceSaver::recognize(const Ref<Resource> &p_resource) const {
-    return Object::cast_to<MiniScript>(*p_resource) != nullptr;
+    return Object::cast_to<MiniScriptScript>(*p_resource) != nullptr;
 }

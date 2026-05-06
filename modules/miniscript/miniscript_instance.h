@@ -2,16 +2,28 @@
 
 #include "core/object/script_instance.h"
 
-class MiniScript;
+class MiniScriptScript;
 class MiniScriptLanguage;
 
 class MiniScriptInstance : public ScriptInstance {
-    Ref<MiniScript> script;
+    Ref<MiniScriptScript> script;
     Object *owner = nullptr;
     HashMap<StringName, Variant> property_values;
 
+    // Real MiniScript interpreter for this instance (lazy-initialized).
+    // Stored as void* to avoid including MiniScript headers in this public header
+    // (MiniScript is both a Godot class name and the thirdparty interpreter namespace).
+    void *ms_interp = nullptr;
+    bool ms_interp_ready = false;
+
+    void _ensure_interpreter();
+    void _sync_props_to_interp();
+    void _sync_props_from_interp();
+
 public:
-    MiniScriptInstance(const Ref<MiniScript> &p_script, Object *p_owner);
+    void _reset_interpreter();
+    MiniScriptInstance(const Ref<MiniScriptScript> &p_script, Object *p_owner);
+    ~MiniScriptInstance();
 
     Object *get_mini_owner() const;
     bool get_mini_property_value(const StringName &p_name, Variant &r_value) const;

@@ -1,13 +1,110 @@
 #include "miniscript_instance.h"
 
+#include "core/debugger/engine_debugger.h"
 #include "core/error/error_macros.h"
+#include "core/os/os.h"
 #include "scene/main/node.h"
 #include "miniscript_language.h"
 #include "miniscript_script.h"
+#include "miniscript_value_bridge.h"
 
-MiniScriptInstance::MiniScriptInstance(const Ref<MiniScript> &p_script, Object *p_owner) {
+#include "MiniscriptInterpreter.h"
+#include "MiniscriptIntrinsics.h"
+#include "MiniscriptTAC.h"
+
+// Convenience helper: cast void* to MiniScript::Interpreter*.
+static inline MiniScript::Interpreter *get_interp(void *ptr) {
+    return static_cast<MiniScript::Interpreter *>(ptr);
+}
+
+// Named static callbacks matching TextOutputMethod signature: void(MiniScript::String, bool).
+static void ms_std_output(MiniScript::String s, bool /*eol*/) {
+    print_line(::String::utf8(s.c_str()));
+}
+static void ms_err_output(MiniScript::String s, bool /*eol*/) {
+    ERR_PRINT(::String::utf8(s.c_str()));
+}
+
+MiniScriptInstance::~MiniScriptInstance() {
+    if (script.is_valid()) {
+        script->_unregister_instance(this);
+    }
+    delete get_interp(ms_interp);
+    ms_interp = nullptr;
+}
+
+void MiniScriptInstance::_reset_interpreter() {
+    delete get_interp(ms_interp);
+    ms_interp = nullptr;
+    ms_interp_ready = false;
+}
+
+void MiniScriptInstance::_ensure_interpreter() {
+    if (ms_interp_ready) {
+        return;
+    }
+
+    if (!script.is_valid()) {
+        return;
+    }
+
+    const String &src = script->get_preprocessed_source();
+    if (src.is_empty()) {
+        ms_interp_ready = true;
+        return;
+    }
+
+    delete get_interp(ms_interp);
+    MiniScript::Interpreter *interp = new MiniScript::Interpreter();
+    ms_interp = interp;
+    interp->hostData = this;
+
+    interp->standardOutput = &ms_std_output;
+    interp->errorOutput = &ms_err_output;
+
+    CharString cs = src.utf8();
+    interp->Reset(MiniScript::String(cs.get_data()));
+    interp->Compile();
+
+    // Run module-level code to define all functions in the global scope.
+    interp->RunUntilDone(10.0);
+
+    ms_interp_ready = true;
+}
+
+void MiniScriptInstance::_sync_props_to_interp() {
+    MiniScript::Interpreter *interp = get_interp(ms_interp);
+    if (!interp || !script.is_valid()) {
+        return;
+    }
+    for (const KeyValue<StringName, Variant> &kv : property_values) {
+        CharString cs = String(kv.key).utf8();
+        MiniScript::String ms_name(cs.get_data());
+        interp->SetGlobalValue(ms_name, MiniScriptBridge::to_ms(kv.value));
+    }
+}
+
+void MiniScriptInstance::_sync_props_from_interp() {
+    MiniScript::Interpreter *interp = get_interp(ms_interp);
+    if (!interp || !script.is_valid()) {
+        return;
+    }
+    for (KeyValue<StringName, Variant> &kv : property_values) {
+        CharString cs = String(kv.key).utf8();
+        MiniScript::String ms_name(cs.get_data());
+        MiniScript::Value v = interp->GetGlobalValue(ms_name);
+        if (!v.IsNull()) {
+            kv.value = MiniScriptBridge::to_variant(v, interp->vm);
+        }
+    }
+}
+
+MiniScriptInstance::MiniScriptInstance(const Ref<MiniScriptScript> &p_script, Object *p_owner) {
     script = p_script;
     owner = p_owner;
+    if (script.is_valid()) {
+        script->_register_instance(this);
+    }
 
     if (script.is_valid()) {
         List<PropertyInfo> properties;
@@ -109,7 +206,62 @@ Variant MiniScriptInstance::callp(const StringName &p_method, const Variant **p_
         return Variant();
     }
 
-    return script->call_script_method(p_method, p_args, p_argcount, r_error, this);
+    // When a debugger is attached, use the custom executor (preserves all debug hooks).
+    if (EngineDebugger::is_active()) {
+        return script->call_script_method(p_method, p_args, p_argcount, r_error, this);
+    }
+
+    // Non-debug path: use the real MiniScript interpreter.
+    if (!script->has_method(p_method)) {
+        r_error.error = Callable::CallError::CALL_ERROR_INVALID_METHOD;
+        return Variant();
+    }
+
+    _ensure_interpreter();
+    MiniScript::Interpreter *interp = get_interp(ms_interp);
+    if (!interp) {
+        // Interpreter unavailable (no source or compile error) — fall back to custom executor.
+        return script->call_script_method(p_method, p_args, p_argcount, r_error, this);
+    }
+
+    // Sync instance properties to interpreter globals.
+    _sync_props_to_interp();
+
+    // Set hostData so _godot_emit intrinsic can access this instance.
+    interp->hostData = this;
+
+    // Build the REPL call expression: __ms_result__ = methodName(__ms_arg0__, ...)
+    for (int i = 0; i < p_argcount; i++) {
+        CharString arg_name_cs = vformat("__ms_arg%d__", i).utf8();
+        MiniScript::String ms_arg_name(arg_name_cs.get_data());
+        MiniScript::Value ms_arg = (p_args && p_args[i]) ? MiniScriptBridge::to_ms(*p_args[i]) : MiniScript::Value::null;
+        interp->SetGlobalValue(ms_arg_name, ms_arg);
+    }
+
+    CharString method_cs = String(p_method).utf8();
+    String call_expr = vformat("__ms_result__ = %s(", String::utf8(method_cs.get_data()));
+    for (int i = 0; i < p_argcount; i++) {
+        if (i > 0) {
+            call_expr += ", ";
+        }
+        call_expr += vformat("__ms_arg%d__", i);
+    }
+    call_expr += ")";
+
+    CharString call_expr_cs = call_expr.utf8();
+    interp->REPL(MiniScript::String(call_expr_cs.get_data()));
+
+    // Sync properties back (method may have mutated them).
+    _sync_props_from_interp();
+
+    r_error.error = Callable::CallError::CALL_OK;
+
+    // Get return value.
+    MiniScript::Value result = interp->GetGlobalValue("__ms_result__");
+    if (result.IsNull()) {
+        return Variant();
+    }
+    return MiniScriptBridge::to_variant(result, interp->vm);
 }
 
 void MiniScriptInstance::notification(int p_notification, bool p_reversed) {

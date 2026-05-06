@@ -153,7 +153,7 @@ bool MiniScriptLanguage::validate(const String &p_script, const String &p_path, 
 }
 
 Script *MiniScriptLanguage::create_script() const {
-    return memnew(MiniScript);
+    return memnew(MiniScriptScript);
 }
 
 bool MiniScriptLanguage::supports_builtin_mode() const {

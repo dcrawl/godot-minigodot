@@ -7,57 +7,70 @@
 #include "miniscript_instance.h"
 #include "miniscript_language.h"
 
-void MiniScript::_bind_methods() {
+void MiniScriptScript::_bind_methods() {
 }
 
-bool MiniScript::can_instantiate() const {
+bool MiniScriptScript::can_instantiate() const {
     return true;
 }
 
-Ref<Script> MiniScript::get_base_script() const {
+Ref<Script> MiniScriptScript::get_base_script() const {
     return Ref<Script>();
 }
 
-StringName MiniScript::get_global_name() const {
+StringName MiniScriptScript::get_global_name() const {
     return global_name;
 }
 
-bool MiniScript::inherits_script(const Ref<Script> &p_script) const {
+bool MiniScriptScript::inherits_script(const Ref<Script> &p_script) const {
     return p_script.ptr() == this;
 }
 
-StringName MiniScript::get_instance_base_type() const {
+StringName MiniScriptScript::get_instance_base_type() const {
     return base_type;
 }
 
-ScriptInstance *MiniScript::instance_create(Object *p_this) {
-    Ref<MiniScript> self(this);
+ScriptInstance *MiniScriptScript::instance_create(Object *p_this) {
+    Ref<MiniScriptScript> self(this);
     return memnew(MiniScriptInstance(self, p_this));
 }
 
-bool MiniScript::instance_has(const Object *p_this) const {
+bool MiniScriptScript::instance_has(const Object *p_this) const {
     return false;
 }
 
-bool MiniScript::has_source_code() const {
+bool MiniScriptScript::has_source_code() const {
     return true;
 }
 
-void MiniScript::set_source_code(const String &p_code) {
+void MiniScriptScript::set_source_code(const String &p_code) {
     source_code = p_code;
     _parse_source();
 }
 
-String MiniScript::get_source_code() const {
+String MiniScriptScript::get_source_code() const {
     return source_code;
 }
 
-Error MiniScript::reload(bool p_keep_state) {
+Error MiniScriptScript::reload(bool p_keep_state) {
     _parse_source();
+    // Invalidate all live instances so they re-initialise their interpreter
+    // on the next call with the new source.
+    for (MiniScriptInstance *inst : instances) {
+        inst->_reset_interpreter();
+    }
     return OK;
 }
 
-Variant MiniScript::call_script_method(const StringName &p_method, const Variant **p_args, int p_argcount, Callable::CallError &r_error, const MiniScriptInstance *p_instance) const {
+void MiniScriptScript::_register_instance(MiniScriptInstance *p_inst) {
+    instances.insert(p_inst);
+}
+
+void MiniScriptScript::_unregister_instance(MiniScriptInstance *p_inst) {
+    instances.erase(p_inst);
+}
+
+Variant MiniScriptScript::call_script_method(const StringName &p_method, const Variant **p_args, int p_argcount, Callable::CallError &r_error, const MiniScriptInstance *p_instance) const {
     MiniScriptLanguage::clear_runtime_error();
 
     const String script_path = get_path().is_empty() ? String("<memory>") : get_path();
@@ -338,78 +351,79 @@ Variant MiniScript::call_script_method(const StringName &p_method, const Variant
     return Variant();
 }
 
+
 #ifdef TOOLS_ENABLED
-StringName MiniScript::get_doc_class_name() const {
+StringName MiniScriptScript::get_doc_class_name() const {
     return StringName();
 }
 
-Vector<DocData::ClassDoc> MiniScript::get_documentation() const {
+Vector<DocData::ClassDoc> MiniScriptScript::get_documentation() const {
     return Vector<DocData::ClassDoc>();
 }
 
-String MiniScript::get_class_icon_path() const {
+String MiniScriptScript::get_class_icon_path() const {
     return String();
 }
 #endif
 
-bool MiniScript::has_method(const StringName &p_method) const {
+bool MiniScriptScript::has_method(const StringName &p_method) const {
     return parsed_methods.has(p_method);
 }
 
-MethodInfo MiniScript::get_method_info(const StringName &p_method) const {
+MethodInfo MiniScriptScript::get_method_info(const StringName &p_method) const {
     if (const ParsedMethod *method = parsed_methods.getptr(p_method)) {
         return method->info;
     }
     return MethodInfo();
 }
 
-bool MiniScript::is_tool() const {
+bool MiniScriptScript::is_tool() const {
     return tool_mode;
 }
 
-bool MiniScript::is_valid() const {
+bool MiniScriptScript::is_valid() const {
     return valid;
 }
 
-bool MiniScript::is_abstract() const {
+bool MiniScriptScript::is_abstract() const {
     return false;
 }
 
-ScriptLanguage *MiniScript::get_language() const {
+ScriptLanguage *MiniScriptScript::get_language() const {
     return MiniScriptLanguage::get_singleton();
 }
 
-bool MiniScript::has_script_signal(const StringName &p_signal) const {
+bool MiniScriptScript::has_script_signal(const StringName &p_signal) const {
     return parsed_signals.has(p_signal);
 }
 
-void MiniScript::get_script_signal_list(List<MethodInfo> *r_signals) const {
+void MiniScriptScript::get_script_signal_list(List<MethodInfo> *r_signals) const {
     for (const KeyValue<StringName, MethodInfo> &entry : parsed_signals) {
         r_signals->push_back(entry.value);
     }
 }
 
-bool MiniScript::get_property_default_value(const StringName &p_property, Variant &r_value) const {
+bool MiniScriptScript::get_property_default_value(const StringName &p_property, Variant &r_value) const {
     return get_exported_property_default(p_property, r_value);
 }
 
-void MiniScript::get_script_method_list(List<MethodInfo> *p_list) const {
+void MiniScriptScript::get_script_method_list(List<MethodInfo> *p_list) const {
     for (const KeyValue<StringName, ParsedMethod> &entry : parsed_methods) {
         p_list->push_back(entry.value.info);
     }
 }
 
-void MiniScript::get_script_property_list(List<PropertyInfo> *p_list) const {
+void MiniScriptScript::get_script_property_list(List<PropertyInfo> *p_list) const {
     for (const KeyValue<StringName, ParsedProperty> &entry : parsed_properties) {
         p_list->push_back(entry.value.info);
     }
 }
 
-const Variant MiniScript::get_rpc_config() const {
+const Variant MiniScriptScript::get_rpc_config() const {
     return Variant();
 }
 
-bool MiniScript::_parse_literal(const String &p_text, Variant &r_value) {
+bool MiniScriptScript::_parse_literal(const String &p_text, Variant &r_value) {
     const String text = p_text.strip_edges();
     if (text.is_empty()) {
         return false;
@@ -445,17 +459,101 @@ bool MiniScript::_parse_literal(const String &p_text, Variant &r_value) {
     return false;
 }
 
-void MiniScript::_parse_source() {
+String MiniScriptScript::_preprocess_source(const String &p_source) const {
+    // Transform Godot-specific source syntax into valid MiniScript syntax.
+    // Strips metadata declarations and rewrites emit/call statements.
+    PackedStringArray lines = p_source.split("\n", true);
+    Vector<String> out;
+    out.resize(lines.size());
+
+    for (int i = 0; i < lines.size(); i++) {
+        String stripped = lines[i].strip_edges();
+        String lower = stripped.to_lower();
+
+        // Strip Godot-specific top-level declarations (preserve blank lines for line numbering)
+        if (lower.begins_with("signal ") || lower == "signal" ||
+            lower.begins_with("export ") || lower == "export" ||
+            lower.begins_with("class_name ") ||
+            lower.begins_with("extends ") ||
+            lower == "tool" || lower == "@tool") {
+            out.write[i] = "";
+            continue;
+        }
+
+        // Transform: emit signalName arg1, arg2 → _godot_emit("signalName", arg1, arg2)
+        if (lower.begins_with("emit ")) {
+            String rest = stripped.substr(5).strip_edges();
+            if (!rest.is_empty()) {
+                int space_pos = rest.find(" ");
+                if (space_pos >= 0) {
+                    String sig_name = rest.substr(0, space_pos).strip_edges();
+                    String args_rest = rest.substr(space_pos + 1).strip_edges();
+                    if (!sig_name.is_empty() && !args_rest.is_empty()) {
+                        out.write[i] = vformat("_godot_emit(\"%s\", %s)", sig_name, args_rest);
+                        continue;
+                    }
+                }
+                // No args: emit signalName
+                String sig_name = rest;
+                out.write[i] = vformat("_godot_emit(\"%s\")", sig_name);
+                continue;
+            }
+            out.write[i] = stripped;
+            continue;
+        }
+
+        // Transform: call methodName → methodName()
+        if (lower.begins_with("call ")) {
+            String method = stripped.substr(5).strip_edges();
+            PackedStringArray parts = method.split(" ", false);
+            if (!parts.is_empty()) {
+                out.write[i] = parts[0].strip_edges() + "()";
+                continue;
+            }
+        }
+
+        // Transform: function name(args) → name = function(args)
+        // MiniScript uses assignment syntax for function definitions.
+        // Preserve leading whitespace for indented (nested) function definitions.
+        if (lower.begins_with("function ")) {
+            // Extract leading whitespace from original line (before "function").
+            String original = lines[i];
+            int func_pos = original.to_lower().find("function ");
+            String indent = original.substr(0, func_pos);
+            String rest = stripped.substr(9).strip_edges(); // after "function "
+
+            // rest should be: name(args) or name()
+            int paren_pos = rest.find("(");
+            if (paren_pos > 0) {
+                String name = rest.substr(0, paren_pos).strip_edges();
+                String sig = rest.substr(paren_pos); // "(args)" or "()"
+                if (!name.is_empty()) {
+                    out.write[i] = indent + name + " = function" + sig;
+                    continue;
+                }
+            }
+        }
+
+        out.write[i] = lines[i];
+    }
+
+    return String("\n").join(out);
+}
+
+void MiniScriptScript::_parse_source() {
     global_name = StringName();
     base_type = SNAME("Object");
     parsed_methods.clear();
     parsed_properties.clear();
     parsed_signals.clear();
     tool_mode = false;
+    preprocessed_source = String();
 
     if (source_code.is_empty()) {
         return;
     }
+
+    preprocessed_source = _preprocess_source(source_code);
 
     PackedStringArray lines = source_code.split("\n", false);
     const int line_count = lines.size();
@@ -737,11 +835,11 @@ void MiniScript::_parse_source() {
     }
 }
 
-bool MiniScript::has_exported_property(const StringName &p_property) const {
+bool MiniScriptScript::has_exported_property(const StringName &p_property) const {
     return parsed_properties.has(p_property);
 }
 
-bool MiniScript::get_exported_property_default(const StringName &p_property, Variant &r_value) const {
+bool MiniScriptScript::get_exported_property_default(const StringName &p_property, Variant &r_value) const {
     if (const ParsedProperty *property = parsed_properties.getptr(p_property)) {
         if (property->has_default) {
             r_value = property->default_value;

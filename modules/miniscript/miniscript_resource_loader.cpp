@@ -15,7 +15,7 @@ Ref<Resource> MiniScriptResourceLoader::load(const String &p_path, const String 
         return Ref<Resource>();
     }
 
-    Ref<MiniScript> script;
+    Ref<MiniScriptScript> script;
     script.instantiate();
     script->set_source_code(source);
     script->set_path(load_path);

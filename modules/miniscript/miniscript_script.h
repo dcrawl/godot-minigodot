@@ -2,11 +2,12 @@
 
 #include "core/object/script_language.h"
 #include "core/templates/hash_map.h"
+#include "core/templates/hash_set.h"
 
 class MiniScriptInstance;
 
-class MiniScript : public Script {
-    GDCLASS(MiniScript, Script);
+class MiniScriptScript : public Script {
+    GDCLASS(MiniScriptScript, Script);
 
     struct ParsedEmitArgument {
         bool is_literal = false;
@@ -52,6 +53,7 @@ class MiniScript : public Script {
     };
 
     String source_code;
+    String preprocessed_source;
     StringName global_name;
     StringName base_type = SNAME("Object");
     HashMap<StringName, ParsedMethod> parsed_methods;
@@ -60,7 +62,10 @@ class MiniScript : public Script {
     bool tool_mode = false;
     bool valid = true;
 
+    HashSet<MiniScriptInstance *> instances;
+
     void _parse_source();
+    String _preprocess_source(const String &p_source) const;
     static bool _parse_literal(const String &p_text, Variant &r_value);
 
 public:
@@ -82,6 +87,10 @@ public:
 
     bool has_exported_property(const StringName &p_property) const;
     bool get_exported_property_default(const StringName &p_property, Variant &r_value) const;
+    const String &get_preprocessed_source() const { return preprocessed_source; }
+
+    void _register_instance(MiniScriptInstance *p_inst);
+    void _unregister_instance(MiniScriptInstance *p_inst);
 
 #ifdef TOOLS_ENABLED
     StringName get_doc_class_name() const override;

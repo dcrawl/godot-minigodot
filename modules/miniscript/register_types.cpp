@@ -5,6 +5,7 @@
 #include "core/object/class_db.h"
 #include "core/object/script_language.h"
 #include "core/os/memory.h"
+#include "miniscript_godot_intrinsics.h"
 #include "miniscript_language.h"
 #include "miniscript_resource_loader.h"
 #include "miniscript_resource_saver.h"
@@ -23,7 +24,9 @@ void initialize_miniscript_module(ModuleInitializationLevel p_level) {
         return;
     }
 
-    GDREGISTER_CLASS(MiniScript);
+    MiniScriptGodotIntrinsics::init_godot_intrinsics();
+
+    GDREGISTER_CLASS(MiniScriptScript);
 
     miniscript_language = memnew(MiniScriptLanguage);
     ScriptServer::register_language(miniscript_language);

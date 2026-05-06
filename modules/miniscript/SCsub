@@ -46,9 +46,26 @@ env_thirdparty.add_source_files(thirdparty_obj, thirdparty_sources)
 env.modules_sources += thirdparty_obj
 
 # Module source files
+# Files that include MiniScript thirdparty headers must be compiled with exceptions enabled,
+# since MiniscriptErrors.h declares inline throw() helpers used by the MiniScript type system.
+
+bridge_sources = [
+    "miniscript_instance.cpp",
+    "miniscript_godot_intrinsics.cpp",
+    "register_types.cpp",
+]
 
 module_obj = []
-env_miniscript.add_source_files(module_obj, "*.cpp")
+
+# Compile bridge files with exceptions enabled (same env as thirdparty).
+for src in bridge_sources:
+    env_thirdparty.add_source_files(module_obj, src)
+
+# Compile remaining module files with the standard module env.
+import os
+all_sources = [f for f in Glob("*.cpp") if os.path.basename(str(f)) not in bridge_sources]
+env_miniscript.add_source_files(module_obj, all_sources)
+
 env.modules_sources += module_obj
 
 env.Depends(module_obj, thirdparty_obj)
