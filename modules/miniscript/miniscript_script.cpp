@@ -848,3 +848,10 @@ bool MiniScriptScript::get_exported_property_default(const StringName &p_propert
     }
     return false;
 }
+
+int MiniScriptScript::get_method_declaration_line(const StringName &p_method) const {
+    if (const ParsedMethod *method = parsed_methods.getptr(p_method)) {
+        return method->declaration_line > 0 ? method->declaration_line : 1;
+    }
+    return 1;
+}

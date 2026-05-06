@@ -248,8 +248,24 @@ Variant MiniScriptInstance::callp(const StringName &p_method, const Variant **p_
     }
     call_expr += ")";
 
+    // Push a debug frame so debug_get_current_stack_info() returns live data
+    // for any signal handlers that fire synchronously during REPL execution.
+    const String script_path = script->get_path().is_empty() ? String("<memory>") : script->get_path();
+    const int decl_line = script->get_method_declaration_line(p_method);
+    Vector<String> arg_names;
+    Vector<Variant> arg_values;
+    arg_names.resize(p_argcount);
+    arg_values.resize(p_argcount);
+    for (int i = 0; i < p_argcount; i++) {
+        arg_names.write[i] = vformat("arg%d", i);
+        arg_values.write[i] = (p_args && p_args[i]) ? *p_args[i] : Variant();
+    }
+    MiniScriptLanguage::push_debug_frame(script_path, String(p_method), decl_line, arg_names, arg_values);
+
     CharString call_expr_cs = call_expr.utf8();
     interp->REPL(MiniScript::String(call_expr_cs.get_data()));
+
+    MiniScriptLanguage::pop_debug_frame();
 
     // Sync properties back (method may have mutated them).
     _sync_props_from_interp();

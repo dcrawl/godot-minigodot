@@ -88,6 +88,7 @@ public:
     bool has_exported_property(const StringName &p_property) const;
     bool get_exported_property_default(const StringName &p_property, Variant &r_value) const;
     const String &get_preprocessed_source() const { return preprocessed_source; }
+    int get_method_declaration_line(const StringName &p_method) const;
 
     void _register_instance(MiniScriptInstance *p_inst);
     void _unregister_instance(MiniScriptInstance *p_inst);
