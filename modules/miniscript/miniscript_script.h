@@ -65,10 +65,10 @@ class MiniScriptScript : public Script {
     HashSet<MiniScriptInstance *> instances;
 
     void _parse_source();
-    String _preprocess_source(const String &p_source) const;
     static bool _parse_literal(const String &p_text, Variant &r_value);
 
 public:
+    String _preprocess_source(const String &p_source) const;
     static void _bind_methods();
 
     bool can_instantiate() const override;

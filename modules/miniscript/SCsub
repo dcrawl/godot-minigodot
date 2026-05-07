@@ -50,6 +50,7 @@ env.modules_sources += thirdparty_obj
 # since MiniscriptErrors.h declares inline throw() helpers used by the MiniScript type system.
 
 bridge_sources = [
+    "miniscript_compiler_check.cpp",
     "miniscript_instance.cpp",
     "miniscript_godot_intrinsics.cpp",
     "register_types.cpp",

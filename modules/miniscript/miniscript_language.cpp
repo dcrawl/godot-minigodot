@@ -5,6 +5,7 @@
 #include "core/io/file_access.h"
 #include "core/os/os.h"
 #include "core/os/thread.h"
+#include "miniscript_compiler_check.h"
 #include "miniscript_script.h"
 
 MiniScriptLanguage *MiniScriptLanguage::singleton = nullptr;
@@ -125,10 +126,28 @@ void MiniScriptLanguage::finish() {
 }
 
 Vector<String> MiniScriptLanguage::get_reserved_words() const {
-    return Vector<String>();
+    static const char *kws[] = {
+        "and", "break", "continue", "else", "end", "false", "for",
+        "function", "if", "in", "isa", "new", "not", "null", "or",
+        "repeat", "return", "self", "then", "true", "while", nullptr
+    };
+    Vector<String> words;
+    for (int i = 0; kws[i]; i++) {
+        words.push_back(kws[i]);
+    }
+    return words;
 }
 
 bool MiniScriptLanguage::is_control_flow_keyword(const String &p_string) const {
+    static const char *cfkws[] = {
+        "break", "continue", "else", "end", "for", "if",
+        "repeat", "return", "then", "while", nullptr
+    };
+    for (int i = 0; cfkws[i]; i++) {
+        if (p_string == cfkws[i]) {
+            return true;
+        }
+    }
     return false;
 }
 
@@ -149,7 +168,30 @@ Vector<String> MiniScriptLanguage::get_string_delimiters() const {
 }
 
 bool MiniScriptLanguage::validate(const String &p_script, const String &p_path, List<String> *r_functions, List<ScriptError> *r_errors, List<Warning> *r_warnings, HashSet<int> *r_safe_lines) const {
-    return true;
+    // Collect declared function names by scanning raw source.
+    if (r_functions) {
+        PackedStringArray lines = p_script.split("\n", false);
+        for (int i = 0; i < lines.size(); i++) {
+            String stripped = lines[i].strip_edges();
+            String lower = stripped.to_lower();
+            if (lower.begins_with("function ")) {
+                String rest = stripped.substr(9).strip_edges();
+                int paren = rest.find("(");
+                if (paren > 0) {
+                    String name = rest.substr(0, paren).strip_edges();
+                    if (!name.is_empty()) {
+                        r_functions->push_back(name);
+                    }
+                }
+            }
+        }
+    }
+
+    // Preprocess then compile via the exception-enabled bridge.
+    Ref<MiniScriptScript> tmp;
+    tmp.instantiate();
+    String preprocessed = tmp->_preprocess_source(p_script);
+    return ms_compiler_check(preprocessed, p_path, r_errors);
 }
 
 Script *MiniScriptLanguage::create_script() const {
@@ -161,6 +203,31 @@ bool MiniScriptLanguage::supports_builtin_mode() const {
 }
 
 int MiniScriptLanguage::find_function(const String &p_function, const String &p_code) const {
+    PackedStringArray lines = p_code.split("\n", false);
+    for (int i = 0; i < lines.size(); i++) {
+        String stripped = lines[i].strip_edges();
+        String lower = stripped.to_lower();
+        // Match: function name( ...
+        if (lower.begins_with("function ")) {
+            String rest = stripped.substr(9).strip_edges();
+            int paren = rest.find("(");
+            if (paren > 0) {
+                String name = rest.substr(0, paren).strip_edges();
+                if (name == p_function) {
+                    return i + 1; // 1-based
+                }
+            }
+        }
+        // Match post-preprocessed: name = function( ...
+        int eq = stripped.find("=");
+        if (eq > 0) {
+            String lhs = stripped.substr(0, eq).strip_edges();
+            String rhs = stripped.substr(eq + 1).strip_edges();
+            if (lhs == p_function && rhs.to_lower().begins_with("function")) {
+                return i + 1;
+            }
+        }
+    }
     return -1;
 }
 
