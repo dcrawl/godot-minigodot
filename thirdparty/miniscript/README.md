@@ -11,7 +11,8 @@ Vendored MiniScript C++ interpreter source for the MiniGodot integration.
 
 ## License
 
-MiniScript is MIT-licensed. See upstream repository for full license text.
+MiniScript is MIT-licensed. The full license text is in `LICENSE` (this directory).
+Copyright (c) 2019 JoeStrout.
 
 ## Update Procedure
 
