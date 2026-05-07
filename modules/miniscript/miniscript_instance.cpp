@@ -39,6 +39,28 @@ void MiniScriptInstance::_reset_interpreter() {
     ms_interp_ready = false;
 }
 
+void MiniScriptInstance::snapshot_live_locals(Vector<String> &r_names, Vector<Variant> &r_values) const {
+    MiniScript::Interpreter *interp = get_interp(ms_interp);
+    if (!interp || !interp->vm) {
+        return;
+    }
+    MiniScript::Context *ctx = interp->vm->GetTopContext();
+    if (!ctx) {
+        return;
+    }
+    MiniScript::ValueDict &vars = ctx->variables;
+    if (vars.Count() == 0) {
+        return;
+    }
+    for (auto it = vars.GetIterator(); !it.Done(); it.Next()) {
+        MiniScript::Value key = it.Key();
+        MiniScript::Value val = it.Value();
+        MiniScript::String key_str = key.ToString(interp->vm);
+        r_names.push_back(String::utf8(key_str.c_str()));
+        r_values.push_back(MiniScriptBridge::to_variant(val, interp->vm));
+    }
+}
+
 void MiniScriptInstance::_ensure_interpreter() {
     if (ms_interp_ready) {
         return;

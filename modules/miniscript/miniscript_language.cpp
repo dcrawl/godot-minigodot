@@ -78,6 +78,14 @@ void MiniScriptLanguage::update_debug_frame_line(int p_line) {
     }
 }
 
+void MiniScriptLanguage::update_debug_frame_locals(const Vector<String> &p_names, const Vector<Variant> &p_values) {
+    if (!debug_stack.is_empty()) {
+        DebugFrame &top = debug_stack.write[debug_stack.size() - 1];
+        top.local_names = p_names;
+        top.local_values = p_values;
+    }
+}
+
 bool MiniScriptLanguage::debug_break(const String &p_error, bool p_allow_continue, bool p_is_error_breakpoint) {
     if (!EngineDebugger::is_active() || singleton == nullptr) {
         return false;
@@ -241,6 +249,69 @@ String MiniScriptLanguage::make_function(const String &p_class, const String &p_
 }
 
 void MiniScriptLanguage::auto_indent_code(String &p_code, int p_from_line, int p_to_line) const {
+    PackedStringArray lines = p_code.split("\n", false);
+    if (lines.is_empty()) {
+        return;
+    }
+
+    // Compute indent level at p_from_line by scanning all preceding lines.
+    int level = 0;
+    for (int i = 0; i < p_from_line && i < lines.size(); i++) {
+        String s = lines[i].strip_edges().to_lower();
+        bool is_close = (s == "end" || s.begins_with("end ") || s.begins_with("until "));
+        bool is_else = (s == "else" || s.begins_with("else "));
+        bool is_open = (!is_else && (s.ends_with(" then") || s == "then" ||
+                        (s.begins_with("for ") && s.contains(" in ")) ||
+                        s.begins_with("while ") || s == "repeat" ||
+                        s.contains(" = function") || s.begins_with("function ")));
+        if (is_close) {
+            level = MAX(0, level - 1);
+        } else if (is_open) {
+            level++;
+        }
+        // else/else-if: level unchanged (closes body, opens new body at same depth)
+    }
+
+    // Apply computed indent to lines in [p_from_line, p_to_line].
+    Vector<String> result;
+    result.resize(lines.size());
+    for (int i = 0; i < lines.size(); i++) {
+        result.write[i] = lines[i];
+    }
+
+    for (int i = p_from_line; i <= p_to_line && i < lines.size(); i++) {
+        String stripped = lines[i].strip_edges();
+        String s = stripped.to_lower();
+
+        bool is_close = (s == "end" || s.begins_with("end ") || s.begins_with("until "));
+        bool is_else = (s == "else" || s.begins_with("else "));
+        bool is_open = (!is_else && (s.ends_with(" then") || s == "then" ||
+                        (s.begins_with("for ") && s.contains(" in ")) ||
+                        s.begins_with("while ") || s == "repeat" ||
+                        s.contains(" = function") || s.begins_with("function ")));
+
+        // Closers and else/else-if dedent the line itself.
+        int line_level = level;
+        if (is_close || is_else) {
+            line_level = MAX(0, level - 1);
+        }
+
+        String indent;
+        for (int t = 0; t < line_level; t++) {
+            indent += "\t";
+        }
+        result.write[i] = indent + stripped;
+
+        // Update running level for the next line.
+        if (is_close) {
+            level = MAX(0, level - 1);
+        } else if (is_open) {
+            level++;
+        }
+        // else/else-if: level stays the same (body indented at same depth as preceding block)
+    }
+
+    p_code = String("\n").join(result);
 }
 
 void MiniScriptLanguage::add_global_constant(const StringName &p_variable, const Variant &p_value) {

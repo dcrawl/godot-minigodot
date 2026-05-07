@@ -27,6 +27,7 @@ public:
     static void push_debug_frame(const String &p_path, const String &p_function, int p_line, const Vector<String> &p_local_names = Vector<String>(), const Vector<Variant> &p_local_values = Vector<Variant>());
     static void pop_debug_frame();
     static void update_debug_frame_line(int p_line);
+    static void update_debug_frame_locals(const Vector<String> &p_names, const Vector<Variant> &p_values);
     static bool debug_break(const String &p_error, bool p_allow_continue = true, bool p_is_error_breakpoint = false);
 
     String get_name() const override;

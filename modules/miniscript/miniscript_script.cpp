@@ -127,6 +127,17 @@ Variant MiniScriptScript::call_script_method(const StringName &p_method, const V
 
         MiniScriptLanguage::update_debug_frame_line(p_line);
 
+        // Snapshot live locals from the interpreter so the debugger shows
+        // variables assigned mid-function, not just entry-time arguments.
+        {
+            Vector<String> live_names;
+            Vector<Variant> live_values;
+            p_instance->snapshot_live_locals(live_names, live_values);
+            if (!live_names.is_empty()) {
+                MiniScriptLanguage::update_debug_frame_locals(live_names, live_values);
+            }
+        }
+
         bool do_break = false;
         bool is_line_breakpoint = false;
 

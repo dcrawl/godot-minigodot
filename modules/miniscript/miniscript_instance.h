@@ -22,6 +22,10 @@ class MiniScriptInstance : public ScriptInstance {
 
 public:
     void _reset_interpreter();
+    // Snapshots live locals from the interpreter's top call frame.
+    // Safe to call from a debug-poll callback while the interpreter is mid-execution.
+    void snapshot_live_locals(Vector<String> &r_names, Vector<Variant> &r_values) const;
+
     MiniScriptInstance(const Ref<MiniScriptScript> &p_script, Object *p_owner);
     ~MiniScriptInstance();
 
