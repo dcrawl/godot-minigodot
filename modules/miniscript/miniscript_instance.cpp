@@ -396,8 +396,15 @@ void MiniScriptInstance::notification(int p_notification, bool p_reversed) {
             call_noarg_method(SNAME("_exit_tree"));
         } break;
 
-        default:
-            break;
+        default: {
+            // Generic _notification(what) handler for all other notifications.
+            if (script->has_method(SNAME("_notification"))) {
+                Variant what_arg = p_notification;
+                const Variant *args[1] = { &what_arg };
+                callp(SNAME("_notification"), args, 1, call_error);
+                report_call_error();
+            }
+        } break;
     }
 }
 

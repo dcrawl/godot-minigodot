@@ -8,6 +8,8 @@
 #include "miniscript_compiler_check.h"
 #include "miniscript_script.h"
 
+#include "MiniscriptIntrinsics.h"
+
 MiniScriptLanguage *MiniScriptLanguage::singleton = nullptr;
 thread_local String MiniScriptLanguage::debug_error;
 thread_local String MiniScriptLanguage::debug_error_path;
@@ -444,6 +446,14 @@ void MiniScriptLanguage::get_recognized_extensions(List<String> *p_extensions) c
 }
 
 void MiniScriptLanguage::get_public_functions(List<MethodInfo> *p_functions) const {
+    for (int i = 0; i < MiniScript::Intrinsic::all.Count(); i++) {
+        MiniScript::Intrinsic *intr = MiniScript::Intrinsic::all[i];
+        if (!intr) continue;
+        MiniScript::String ms_name = intr->name;
+        MethodInfo mi;
+        mi.name = String::utf8(ms_name.c_str());
+        p_functions->push_back(mi);
+    }
 }
 
 void MiniScriptLanguage::get_public_constants(List<Pair<String, Variant>> *p_constants) const {
