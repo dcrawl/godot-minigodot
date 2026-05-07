@@ -1,0 +1,4 @@
+[application]
+config/name="MiniScript Perf Baseline"
+run/main_scene="res://PerfBaseline.tscn"
+config/features=PackedStringArray("4.6")
