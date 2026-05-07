@@ -11,6 +11,8 @@ class MiniScriptLanguage : public ScriptLanguage {
         int line = -1;
         Vector<String> local_names;
         Vector<Variant> local_values;
+        Vector<String> member_names;
+        Vector<Variant> member_values;
     };
 
     static MiniScriptLanguage *singleton;
@@ -31,6 +33,7 @@ public:
     static void pop_debug_frame();
     static void update_debug_frame_line(int p_line);
     static void update_debug_frame_locals(const Vector<String> &p_names, const Vector<Variant> &p_values);
+    static void update_debug_frame_members(const Vector<String> &p_names, const Vector<Variant> &p_values);
     static bool debug_break(const String &p_error, bool p_allow_continue = true, bool p_is_error_breakpoint = false);
 
     String get_name() const override;

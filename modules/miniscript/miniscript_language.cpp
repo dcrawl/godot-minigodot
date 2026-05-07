@@ -245,7 +245,7 @@ String MiniScriptLanguage::make_function(const String &p_class, const String &p_
     String source = "function ";
     source += p_name;
     source += "()\n";
-    source += "\t// TODO: implement\n";
+    source += "\t// Write your code here\n";
     source += "end function\n";
     return source;
 }
@@ -376,9 +376,31 @@ void MiniScriptLanguage::debug_get_stack_level_locals(int p_level, List<String> 
 }
 
 void MiniScriptLanguage::debug_get_stack_level_members(int p_level, List<String> *p_members, List<Variant> *p_values, int p_max_subitems, int p_max_depth) {
+    const Vector<DebugFrame> &frames = debug_stack.is_empty() ? debug_last_error_stack : debug_stack;
+    if (p_level < 0 || p_level >= frames.size()) {
+        return;
+    }
+    const int index = frames.size() - 1 - p_level;
+    const DebugFrame &frame = frames[index];
+    for (int i = 0; i < frame.member_names.size(); i++) {
+        p_members->push_back(frame.member_names[i]);
+        p_values->push_back(i < frame.member_values.size() ? frame.member_values[i] : Variant());
+    }
 }
 
 void MiniScriptLanguage::debug_get_globals(List<String> *p_globals, List<Variant> *p_values, int p_max_subitems, int p_max_depth) {
+    for (const KeyValue<StringName, Variant> &kv : global_constants) {
+        p_globals->push_back(String(kv.key));
+        p_values->push_back(kv.value);
+    }
+}
+
+void MiniScriptLanguage::update_debug_frame_members(const Vector<String> &p_names, const Vector<Variant> &p_values) {
+    if (!debug_stack.is_empty()) {
+        DebugFrame &top = debug_stack.write[debug_stack.size() - 1];
+        top.member_names = p_names;
+        top.member_values = p_values;
+    }
 }
 
 String MiniScriptLanguage::debug_parse_stack_level_expression(int p_level, const String &p_expression, int p_max_subitems, int p_max_depth) {

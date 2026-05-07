@@ -317,6 +317,17 @@ Variant MiniScriptInstance::callp(const StringName &p_method, const Variant **p_
     }
     MiniScriptLanguage::push_debug_frame(script_path, String(p_method), decl_line, arg_names, arg_values);
 
+    // Snapshot exported properties into the debug frame so the debugger shows them.
+    {
+        Vector<String> prop_names;
+        Vector<Variant> prop_vals;
+        for (const KeyValue<StringName, Variant> &kv : property_values) {
+            prop_names.push_back(String(kv.key));
+            prop_vals.push_back(kv.value);
+        }
+        MiniScriptLanguage::update_debug_frame_members(prop_names, prop_vals);
+    }
+
     CharString call_expr_cs = call_expr.utf8();
     interp->REPL(MiniScript::String(call_expr_cs.get_data()));
 
