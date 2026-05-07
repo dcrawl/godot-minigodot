@@ -138,6 +138,42 @@ static MiniScript::IntrinsicResult intrinsic_godot_set(MiniScript::Context *cont
     return MiniScript::IntrinsicResult::Null;
 }
 
+// vec2(x, y) — create a Vector2 map {x: x, y: y}.
+static MiniScript::IntrinsicResult intrinsic_vec2(MiniScript::Context *context, MiniScript::IntrinsicResult partialResult) {
+    double x = 0.0, y = 0.0;
+    MiniScript::Value xv = context->GetVar("x");
+    MiniScript::Value yv = context->GetVar("y");
+    if (xv.type == MiniScript::ValueType::Number) x = xv.DoubleValue();
+    if (yv.type == MiniScript::ValueType::Number) y = yv.DoubleValue();
+    return MiniScript::IntrinsicResult(MiniScriptBridge::make_vec_map({{"x", x}, {"y", y}}));
+}
+
+// vec3(x, y, z) — create a Vector3 map {x: x, y: y, z: z}.
+static MiniScript::IntrinsicResult intrinsic_vec3(MiniScript::Context *context, MiniScript::IntrinsicResult partialResult) {
+    double x = 0.0, y = 0.0, z = 0.0;
+    MiniScript::Value xv = context->GetVar("x");
+    MiniScript::Value yv = context->GetVar("y");
+    MiniScript::Value zv = context->GetVar("z");
+    if (xv.type == MiniScript::ValueType::Number) x = xv.DoubleValue();
+    if (yv.type == MiniScript::ValueType::Number) y = yv.DoubleValue();
+    if (zv.type == MiniScript::ValueType::Number) z = zv.DoubleValue();
+    return MiniScript::IntrinsicResult(MiniScriptBridge::make_vec_map({{"x", x}, {"y", y}, {"z", z}}));
+}
+
+// color(r, g, b, a) — create a Color map {r, g, b, a}.
+static MiniScript::IntrinsicResult intrinsic_color(MiniScript::Context *context, MiniScript::IntrinsicResult partialResult) {
+    double r = 0.0, g = 0.0, b = 0.0, a = 1.0;
+    MiniScript::Value rv = context->GetVar("r");
+    MiniScript::Value gv = context->GetVar("g");
+    MiniScript::Value bv = context->GetVar("b");
+    MiniScript::Value av = context->GetVar("a");
+    if (rv.type == MiniScript::ValueType::Number) r = rv.DoubleValue();
+    if (gv.type == MiniScript::ValueType::Number) g = gv.DoubleValue();
+    if (bv.type == MiniScript::ValueType::Number) b = bv.DoubleValue();
+    if (av.type == MiniScript::ValueType::Number) a = av.DoubleValue();
+    return MiniScript::IntrinsicResult(MiniScriptBridge::make_vec_map({{"r", r}, {"g", g}, {"b", b}, {"a", a}}));
+}
+
 // Helper: resolve a MiniScript number to a live Godot Object via ObjectDB.
 static Object *get_object_by_ms_id(MiniScript::Value id_val) {
     if (id_val.IsNull() || id_val.type != MiniScript::ValueType::Number) return nullptr;
@@ -228,6 +264,27 @@ static MiniScript::IntrinsicResult intrinsic_godot_set_prop(MiniScript::Context 
 }
 
 void MiniScriptGodotIntrinsics::init_godot_intrinsics() {
+    {
+        MiniScript::Intrinsic *f = MiniScript::Intrinsic::Create("vec2");
+        f->AddParam("x", 0.0);
+        f->AddParam("y", 0.0);
+        f->code = &intrinsic_vec2;
+    }
+    {
+        MiniScript::Intrinsic *f = MiniScript::Intrinsic::Create("vec3");
+        f->AddParam("x", 0.0);
+        f->AddParam("y", 0.0);
+        f->AddParam("z", 0.0);
+        f->code = &intrinsic_vec3;
+    }
+    {
+        MiniScript::Intrinsic *f = MiniScript::Intrinsic::Create("color");
+        f->AddParam("r", 0.0);
+        f->AddParam("g", 0.0);
+        f->AddParam("b", 0.0);
+        f->AddParam("a", 1.0);
+        f->code = &intrinsic_color;
+    }
     {
         MiniScript::Intrinsic *f = MiniScript::Intrinsic::Create("_godot_emit");
         f->AddParam("signal_name");

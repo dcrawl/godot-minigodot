@@ -1,0 +1,8 @@
+; MiniScript Vector2/3/Color bridge smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Vec2 Smoke"
+run/main_scene="res://Vec2Smoke.tscn"
