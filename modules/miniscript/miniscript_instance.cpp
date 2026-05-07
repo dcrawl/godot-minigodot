@@ -63,6 +63,13 @@ void MiniScriptInstance::snapshot_live_locals(Vector<String> &r_names, Vector<Va
     }
 }
 
+void MiniScriptInstance::snapshot_exported_properties(Vector<String> &r_names, Vector<Variant> &r_values) const {
+    for (const KeyValue<StringName, Variant> &kv : property_values) {
+        r_names.push_back(String(kv.key));
+        r_values.push_back(kv.value);
+    }
+}
+
 void MiniScriptInstance::_ensure_interpreter() {
     if (ms_interp_ready) {
         return;
@@ -321,10 +328,7 @@ Variant MiniScriptInstance::callp(const StringName &p_method, const Variant **p_
     {
         Vector<String> prop_names;
         Vector<Variant> prop_vals;
-        for (const KeyValue<StringName, Variant> &kv : property_values) {
-            prop_names.push_back(String(kv.key));
-            prop_vals.push_back(kv.value);
-        }
+        snapshot_exported_properties(prop_names, prop_vals);
         MiniScriptLanguage::update_debug_frame_members(prop_names, prop_vals);
     }
 

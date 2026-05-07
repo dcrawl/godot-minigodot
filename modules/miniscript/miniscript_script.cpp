@@ -36,6 +36,11 @@ ScriptInstance *MiniScriptScript::instance_create(Object *p_this) {
 }
 
 bool MiniScriptScript::instance_has(const Object *p_this) const {
+    for (MiniScriptInstance *inst : instances) {
+        if (inst->get_mini_owner() == p_this) {
+            return true;
+        }
+    }
     return false;
 }
 
@@ -119,6 +124,14 @@ Variant MiniScriptScript::call_script_method(const StringName &p_method, const V
             }
         }
     } debug_frame_guard(script_path, String(p_method), method->declaration_line, debug_local_names, debug_local_values);
+
+    // Snapshot exported properties into the debug frame at method entry.
+    if (p_instance) {
+        Vector<String> member_names;
+        Vector<Variant> member_values;
+        p_instance->snapshot_exported_properties(member_names, member_values);
+        MiniScriptLanguage::update_debug_frame_members(member_names, member_values);
+    }
 
     auto poll_debug_line = [&](int p_line) -> bool {
         if (script_debugger == nullptr || !EngineDebugger::is_active()) {
