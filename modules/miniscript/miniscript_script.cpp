@@ -566,7 +566,7 @@ void MiniScriptScript::_parse_source() {
 
     preprocessed_source = _preprocess_source(source_code);
 
-    PackedStringArray lines = source_code.split("\n", false);
+    PackedStringArray lines = source_code.split("\n", true);
     const int line_count = lines.size();
 
     bool in_function = false;
@@ -831,7 +831,7 @@ void MiniScriptScript::_parse_source() {
                 call_action.method_name = method_name;
                 call_action.source_line = j + 1;
                 parsed.call_actions.push_back(call_action);
-            } else if (!body_line.is_empty() && !body_line.begins_with("#")) {
+            } else if (!body_line.is_empty() && !body_line.begins_with("//") && !body_line.begins_with("#")) {
                 parsed.has_runtime_issue = true;
                 parsed.runtime_issue_line = j + 1;
                 parsed.runtime_issue_message = vformat("unsupported statement '%s'", body_line);

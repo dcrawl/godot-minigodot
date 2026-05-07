@@ -1,4 +1,4 @@
-# MiniScript smoke script for runtime patch validation
+// MiniScript smoke script for runtime patch validation
 
 function _ready()
 	print "MiniScript smoke _ready hit"

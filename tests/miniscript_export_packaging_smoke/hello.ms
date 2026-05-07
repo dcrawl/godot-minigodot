@@ -1,4 +1,4 @@
-# MiniScript export-packaging smoke script
+// MiniScript export-packaging smoke script
 
 function _ready()
 	print "MiniScript smoke _ready hit"

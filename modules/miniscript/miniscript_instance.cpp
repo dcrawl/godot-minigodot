@@ -1,7 +1,9 @@
 #include "miniscript_instance.h"
 
+#include "core/core_constants.h"
 #include "core/debugger/engine_debugger.h"
 #include "core/error/error_macros.h"
+#include "core/math/math_defs.h"
 #include "core/os/os.h"
 #include "scene/main/node.h"
 #include "miniscript_language.h"
@@ -22,7 +24,7 @@ static void ms_std_output(MiniScript::String s, bool /*eol*/) {
     print_line(::String::utf8(s.c_str()));
 }
 static void ms_err_output(MiniScript::String s, bool /*eol*/) {
-    ERR_PRINT(::String::utf8(s.c_str()));
+    ERR_PRINT("MiniScript runtime error: " + ::String::utf8(s.c_str()));
 }
 
 MiniScriptInstance::~MiniScriptInstance() {
@@ -90,6 +92,37 @@ void MiniScriptInstance::_ensure_interpreter() {
 
     // Run module-level code to define all functions in the global scope.
     interp->RunUntilDone(10.0);
+
+    // Seed Godot global constants into the interpreter's global context.
+    // Covers: built-in enums (OK, FAILED, ERR_*, KEY_*, etc.), math constants (PI, TAU, INF),
+    // and autoload singletons registered via add_global_constant().
+    // Seed Godot global constants into the interpreter's global context.
+    // Covers: built-in enums (OK, FAILED, ERR_*, KEY_*, etc.), math constants (PI, TAU, INF),
+    // and autoload singletons registered via add_global_constant().
+    if (interp->vm) {
+        // CoreConstants: integer enum values (OK=0, FAILED=1, ERR_*, etc.)
+        const int core_count = CoreConstants::get_global_constant_count();
+        for (int ci = 0; ci < core_count; ci++) {
+            const char *name = CoreConstants::get_global_constant_name(ci);
+            int64_t value = CoreConstants::get_global_constant_value(ci);
+            interp->SetGlobalValue(MiniScript::String(name), MiniScript::Value((double)value));
+        }
+
+        // Math constants not in CoreConstants
+        interp->SetGlobalValue(MiniScript::String("PI"),  MiniScript::Value(Math::PI));
+        interp->SetGlobalValue(MiniScript::String("TAU"), MiniScript::Value(Math::TAU));
+        interp->SetGlobalValue(MiniScript::String("INF"), MiniScript::Value((double)INFINITY));
+        interp->SetGlobalValue(MiniScript::String("NAN"), MiniScript::Value((double)NAN));
+
+        // Autoload singletons registered via add_global_constant()
+        MiniScriptLanguage *lang = MiniScriptLanguage::get_singleton();
+        if (lang) {
+            for (const KeyValue<StringName, Variant> &kv : lang->get_global_constants()) {
+                CharString key_cs = String(kv.key).utf8();
+                interp->SetGlobalValue(MiniScript::String(key_cs.get_data()), MiniScriptBridge::to_ms(kv.value));
+            }
+        }
+    }
 
     ms_interp_ready = true;
 }
@@ -319,7 +352,7 @@ void MiniScriptInstance::notification(int p_notification, bool p_reversed) {
         if (!script->has_method(p_method)) {
             return;
         }
-        script->call_script_method(p_method, nullptr, 0, call_error, this);
+        callp(p_method, nullptr, 0, call_error);
         report_call_error();
     };
 
@@ -330,7 +363,7 @@ void MiniScriptInstance::notification(int p_notification, bool p_reversed) {
 
         Variant delta_arg = p_delta;
         const Variant *args[1] = { &delta_arg };
-        script->call_script_method(p_method, args, 1, call_error, this);
+        callp(p_method, args, 1, call_error);
         report_call_error();
     };
 

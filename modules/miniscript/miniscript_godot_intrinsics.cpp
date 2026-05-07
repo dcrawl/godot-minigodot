@@ -1,5 +1,6 @@
 #include "miniscript_godot_intrinsics.h"
 #include "miniscript_instance.h"
+#include "miniscript_script.h"
 #include "miniscript_value_bridge.h"
 
 #include "core/string/string_name.h"
@@ -39,6 +40,20 @@ static MiniScript::IntrinsicResult intrinsic_godot_emit(MiniScript::Context *con
             break;
         }
         emit_args.push_back(MiniScriptBridge::to_variant(v, context->vm));
+    }
+
+    // Validate signal argument count against the declared signal.
+    Ref<MiniScriptScript> ms_script = inst->get_script();
+    if (ms_script.is_valid()) {
+        int expected = ms_script->get_signal_argument_count(StringName(signal_name));
+        if (expected >= 0) {
+            int got = emit_args.size();
+            if (got != expected) {
+                MiniScript::RuntimeException(MiniScript::String(
+                    vformat("signal '%s' expected %d argument(s), got %d", signal_name, expected, got).utf8().get_data()
+                )).raise();
+            }
+        }
     }
 
     Object *owner = inst->get_mini_owner();

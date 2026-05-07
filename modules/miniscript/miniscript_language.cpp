@@ -161,7 +161,7 @@ bool MiniScriptLanguage::is_control_flow_keyword(const String &p_string) const {
 
 Vector<String> MiniScriptLanguage::get_comment_delimiters() const {
     Vector<String> delimiters;
-    delimiters.push_back("#");
+    delimiters.push_back("//");
     return delimiters;
 }
 
@@ -243,7 +243,7 @@ String MiniScriptLanguage::make_function(const String &p_class, const String &p_
     String source = "function ";
     source += p_name;
     source += "()\n";
-    source += "\t# TODO: implement\n";
+    source += "\t// TODO: implement\n";
     source += "end function\n";
     return source;
 }
@@ -315,6 +315,7 @@ void MiniScriptLanguage::auto_indent_code(String &p_code, int p_from_line, int p
 }
 
 void MiniScriptLanguage::add_global_constant(const StringName &p_variable, const Variant &p_value) {
+    global_constants[p_variable] = p_value;
 }
 
 String MiniScriptLanguage::debug_get_error() const {
@@ -446,6 +447,9 @@ void MiniScriptLanguage::get_public_functions(List<MethodInfo> *p_functions) con
 }
 
 void MiniScriptLanguage::get_public_constants(List<Pair<String, Variant>> *p_constants) const {
+    for (const KeyValue<StringName, Variant> &kv : global_constants) {
+        p_constants->push_back(Pair<String, Variant>(String(kv.key), kv.value));
+    }
 }
 
 void MiniScriptLanguage::get_public_annotations(List<MethodInfo> *p_annotations) const {

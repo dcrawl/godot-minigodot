@@ -1,4 +1,4 @@
-function _ready(expected_arg)
-    print "this should not run"
-    return 1
+function _ready()
+	undefinedBadFunction()
+	print "this should not run"
 end function

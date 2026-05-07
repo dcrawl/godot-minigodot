@@ -109,6 +109,10 @@ public:
 
     bool has_script_signal(const StringName &p_signal) const override;
     void get_script_signal_list(List<MethodInfo> *r_signals) const override;
+    int get_signal_argument_count(const StringName &p_signal) const {
+        const MethodInfo *info = parsed_signals.getptr(p_signal);
+        return info ? info->arguments.size() : -1;
+    }
     bool get_property_default_value(const StringName &p_property, Variant &r_value) const override;
     void get_script_method_list(List<MethodInfo> *p_list) const override;
     void get_script_property_list(List<PropertyInfo> *p_list) const override;

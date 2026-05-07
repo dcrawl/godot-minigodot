@@ -40,8 +40,12 @@ inline Variant to_variant(MiniScript::Value v, MiniScript::Machine *vm = nullptr
     switch (v.type) {
         case MiniScript::ValueType::Null:
             return Variant();
-        case MiniScript::ValueType::Number:
-            return Variant(v.DoubleValue());
+        case MiniScript::ValueType::Number: {
+            double d = v.DoubleValue();
+            int64_t i = (int64_t)d;
+            if ((double)i == d) return Variant(i);
+            return Variant(d);
+        }
         default: {
             MiniScript::String s = v.ToString(vm);
             return Variant(String::utf8(s.c_str()));

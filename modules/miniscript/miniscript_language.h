@@ -20,7 +20,10 @@ class MiniScriptLanguage : public ScriptLanguage {
     static thread_local Vector<DebugFrame> debug_stack;
     static thread_local Vector<DebugFrame> debug_last_error_stack;
 
+    HashMap<StringName, Variant> global_constants;
+
 public:
+    const HashMap<StringName, Variant> &get_global_constants() const { return global_constants; }
     static MiniScriptLanguage *get_singleton();
     static void clear_runtime_error();
     static void set_runtime_error(const String &p_path, int p_line, const String &p_message);

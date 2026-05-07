@@ -1,0 +1,8 @@
+; MiniScript global constants smoke project
+
+config_version=5
+
+[application]
+
+config/name="MiniScript Global Constants Smoke"
+run/main_scene="res://GlobalConstants.tscn"
